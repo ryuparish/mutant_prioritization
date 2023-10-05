@@ -1,0 +1,68 @@
+// MML template that enables all mutation operators. We use this template
+// rather than the Defects4J default to generate all possible mutants.
+
+// Replacement lists
+list_aor={+,-,*,/,%};
+list_lor={&,|,^};
+list_sor={<<,>>,>>>};
+list_oru={+,-,~};
+list_cor={&&,||,LHS,RHS,TRUE,FALSE,==,!=};
+list_ror={>=,>,<=,<,!=,==,TRUE,FALSE};
+
+// Replacements for the AOR operator
+BIN(+)->list_aor;
+BIN(-)->list_aor;
+BIN(*)->list_aor;
+BIN(/)->list_aor;
+BIN(%)->list_aor;
+
+// Replacements for the SOR operator
+BIN(>>)->list_sor;
+BIN(<<)->list_sor;
+BIN(>>>)->list_sor;
+
+// Replacements for the LOR operator
+BIN(&)->list_lor;
+BIN(|)->list_lor;
+BIN(^)->list_lor;
+
+// Replacements for the ORU operator
+UNR(+)->list_oru;
+UNR(-)->list_oru;
+UNR(~)->list_oru;
+
+// Replacements for the ROR operator (full set)
+BIN(>)->list_ror;
+BIN(<)->list_ror;
+BIN(>=)->list_ror;
+BIN(<=)->list_ror;
+BIN(==)->list_ror;
+BIN(!=)->list_ror;
+
+// Replacements for the COR operator (full set)
+BIN(&&)->list_cor;
+BIN(||)->list_cor;
+
+// Deletions for the STD operator (type of statement that should be deleted)
+DEL(CALL);
+DEL(INC);
+DEL(DEC);
+DEL(ASSIGN);
+DEL(RETURN);
+DEL(CONT);
+DEL(BREAK);
+
+// Literal types for the LVR operator
+LIT(BOOLEAN);
+LIT(NUMBER);
+LIT(STRING);
+
+AOR;
+SOR;
+LOR;
+ORU;
+ROR;
+COR;
+STD;
+LVR;
+EVR;

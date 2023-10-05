@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#
+# Taken from the Major 2.0.0 release.
+#
+# Adapted to:
+#  - set export.context flag
+#  - read mml file from from an environment variable (MML)
+#    (MML should contain the path to the compiled mml file)
+
+set -o errexit
+
+CLASSPATH="$MAJOR_HOME/lib/major.jar"
+
+JAVA_ARGS=()
+LOGGING_ARGS=""
+
+if [ -z "$MML" ]; then
+    echo "MML not set" >&2
+    exit 1
+fi
+
+while (( "$#" )); do
+    case "$1" in
+        -classpath|-cp)
+            CLASSPATH="$CLASSPATH:$2"
+            shift 2
+            ;;
+        --logging)
+            if [ -z "$LOGGING_ARGS" ]; then
+                LOGGING_ARGS="logging:$2"
+            else
+                LOGGING_ARGS="$LOGGING_ARGS,$2"
+            fi
+            shift 2
+            ;;
+        --mml)
+            MML="mml:$2"
+            shift 2
+            ;;
+        *)
+            JAVA_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Enable context export
+PLUGIN_ARG="-Xplugin:MajorPlugin export.context enable.decl.refactor enable.method.refactor decl.refactor.params:500,50 method.refactor.params:2000,500 mml:$MML"
+if [ -n "$LOGGING_ARGS" ]; then
+    PLUGIN_ARG="$PLUGIN_ARG $LOGGING_ARGS"
+fi
+
+echo "### Running Major with $PLUGIN_ARG"
+
+javac -cp "$CLASSPATH" "$PLUGIN_ARG" ${JAVA_ARGS[*]}

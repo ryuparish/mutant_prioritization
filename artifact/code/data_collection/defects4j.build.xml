@@ -1,0 +1,183 @@
+<!--
+Wrapper build file to overwrite mutation.test target in Defects4J, which is
+necessary to obtain the kill matrix.
+-->
+
+<project name="Customized-Mutants-Defects4J" basedir="${basedir}" xmlns:rsel="antlib:org.apache.tools.ant.types.resources.selectors">
+    <!-- Default settings for mutation analysis -->
+    <property name="major.exportKillMap"  value="false"/>
+    <property name="major.testOrder"      value="sort_methods"/>
+    <property name="major.analysisType"   value="preproc_mutation"/>
+    <property name="major.haltOnFailure"  value="true"/>
+
+    <!-- Override D4J defaults -->
+    <property name="d4j.relevant.tests.only" value="false"/>
+
+    <!-- Include Defects4J's main build file -->
+    <import file="${d4j.home}/framework/projects/defects4j.build.xml"/>
+
+<!--
+    Run mutation analysis
+-->
+    <target name="mutate" depends="check.classes.uptodate" unless="classes.mutated.uptodate">
+        <property name="dir.classes.tmp" value=".classes.tmp"/>
+        <!-- Backup original class files (might not yet exist) -->
+        <move file="${classes.dir}" tofile="${dir.classes.tmp}" quiet="true" failonerror="false"/>
+
+        <!-- Delete all previously mutated classes -->
+        <delete dir="${d4j.dir.classes.mutated}" quiet="true" failonerror="false"/>
+
+        <!--
+        Set compiler property to change default compiler to compiler
+        adapter "MajorCompiler". This simple ant compiler adapter will
+        invoke a compiler executable named "major", which has to be on
+        the PATH!
+
+        TODO: Improve compiler adapter to explicitly override the output directory.
+        -->
+        <!-- Override which compiler is being used -->
+        <!-- Has to be run with  -->
+        <property name="build.compiler" value="major.ant.MajorCompiler"/>
+        <property name="d4j.mutation" value="true"/>
+        <!-- Call original compile target -->
+        <antcall target="compile"/>
+        <!-- Move mutated classes to dedicated directory -->
+        <move file="${classes.dir}" tofile="${d4j.dir.classes.mutated}"/>
+        <copy file="${d4j.workdir}/${d4j.properties}" todir="${d4j.dir.classes.mutated}" overwrite="true"/>
+        <!-- Restore original class files -->
+        <move file="${dir.classes.tmp}" tofile="${classes.dir}" quiet="true" failonerror="false"/>
+    </target>
+
+    <target name="all.mutation.tests" depends="compile.tests,update.all.tests" description="Perform mutation analysis">
+    </target>
+
+    <target name="mutation.test" depends="compile.tests,update.all.tests" description="Perform mutation analysis">
+        <!-- Test a generated test suite -->
+        <if><isset property="d4j.test.include"/>
+            <then>
+                <echo message="Generated test suite"/>
+                <fileset id="major.tests" dir="${d4j.test.dir}">
+                    <include name="**/${d4j.test.include}"/>
+                    <!-- Ignore helper classes that do not contain test cases -->
+                    <exclude name="**/*_scaffolding.java"/>
+                </fileset>
+            </then>
+            <else>
+                <!-- Test existing test suite -->
+                <echo message="Existing test suite"/>
+                <echo message="all.manual.tests=${all.manual.tests}"/>
+                <fail message="File set all.manual.tests not set!" unless="ant.refid:all.manual.tests" />
+                <fileset id="major.tests" refid="all.manual.tests" />
+            </else>
+        </if>
+
+        <echo message="Running mutation analysis ..."/>
+
+        <!--
+        Setting haltonfailure to false will cause Major to exclude failing tests
+        when computing the mutation score -> usually all tests should pass
+        before running mutation analysis!
+        -->
+        <junit
+
+            printsummary="false"
+            showoutput="false"
+            haltonfailure="${major.haltOnFailure}"
+
+            mutationAnalysis="true"
+            analysisType="${major.analysisType}"
+            timeoutFactor="16"
+            timeoutOffset="1000"
+            includeMutantsFile="${major.includeMutantsFile}"
+            exportKillMap="${major.exportKillMap}"
+            testOrder="${major.testOrder}"
+            >
+
+            <classpath>
+                <pathelement location="${d4j.dir.classes.mutated}" />
+                <!-- Add the location for where the classes for generated tests go -->
+                <pathelement location="${build.home}/../.classes_testgen" />
+                <!-- Same as above, but for compatibility with older versions of defects4j -->
+                <pathelement location="${build.home}/gen-tests" />
+                <pathelement path="${build.home}/../evosuite" />
+                <!-- <pathelement path="${build.home}/gen-tests" /> -->
+                <path refid="d4j.test.classpath"/>
+                <!-- Add dependencies to runtime libraries of test generation tools -->
+                <path refid="d4j.lib.testgen.rt"/>
+            </classpath>
+
+            <test name="${test.entry.class}" methods="${test.entry.method}" if="test.entry.class" />
+            <batchtest unless="test.entry.class" fork="no">
+                <fileset refid="major.tests"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="compile.add.tests" depends="compile" description="Compile unit test cases">
+        <javac srcdir="${test.home}" destdir="${build.home}/add_tests" debug="${compile.debug}" deprecation="off" target="${compile.target}" source="${compile.source}" optimize="${compile.optimize}">
+            <classpath refid="test.classpath"/>
+        </javac>
+        <copy todir="${build.home}/add_tests" filtering="on">
+            <fileset dir="${test.home}" excludes="**/*.java"/>
+        </copy>
+    </target>
+
+    <target name="mutation.add.test" depends="compile.add.tests,update.all.tests" description="Perform mutation analysis">
+        <echo message="mutation.add.test test.home=${test.home}"/>
+        <!-- Test additional test suite -->
+        <echo message="mutation.add.test existing test suite"/>
+        <echo message="all.add.tests=${all.add.tests}"/>
+      	<echo message="dir.classes.mutated=${d4j.dir.classes.mutated}"/>
+      	<echo message="build.home=${build.home}"/>
+      	<echo message="test.entry.class=${test.entry.class}"/>
+      	<echo message="test.entry.method=${test.entry.method}"/>
+
+        <!-- <fail message="File set all.add.tests not set!" unless="ant.refid:all.add.tests" /> -->
+        <fileset id="major.tests" refid="all.add.tests" />
+
+        <fail message="Property major.exclude not set!" unless="major.exclude" />
+        <fail message="Property major.kill.log not set!" unless="major.kill.log" />
+
+        <echo message="Running mutation analysis ..."/>
+
+        <fileset id="major.tests" dir="${d4j.test.dir}">
+            <!-- Only include classes that contain test cases -->
+            <include name="**/*Test.java"/>
+        </fileset>
+
+        <!--
+        Setting haltonfailure to false will cause Major to exclude failing tests
+        when computing the mutation score -> usually all tests should pass
+        before running mutation analysis!
+        -->
+        <junit
+            printsummary="false"
+            showoutput="false"
+            haltonfailure="${major.haltOnFailure}"
+
+            mutationAnalysis="true"
+            analysisType="${major.analysisType}"
+            timeoutFactor="16"
+            timeoutOffset="1000"
+            mutantsLogFile="${major.mutants.log}"
+            mutantDetailsFile="${major.kill.log}"
+            excludeMutantsFile="${major.exclude}"
+            exportKillMap="${major.export.kill.matrix}"
+            covMapFile="covMap.csv"
+            testOrder="${major.sort}"
+            >
+
+            <classpath>
+                <pathelement location="${d4j.dir.classes.mutated}" />
+                <pathelement path="${build.home}/add_tests" />
+                <path refid="d4j.test.classpath"/>
+            </classpath>
+
+            <test name="${test.entry.class}" methods="${test.entry.method}" if="test.entry.class" />
+            <batchtest unless="test.entry.class" fork="no">
+                <fileset refid="major.tests"/>
+            </batchtest>
+        </junit>
+    </target>
+
+</project>

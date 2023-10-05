@@ -1,0 +1,2 @@
+Code and data are licensed separately. Please see the LICENSE files under
+the `code` and `data` subdirectories, respectively.

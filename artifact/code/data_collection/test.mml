@@ -1,0 +1,7 @@
+// MML file that creates a very small number of mutants. This allows running
+// mutation analysis sequentially and finishing in a reasonable amount of time.
+
+// Replacements for the AOR operator
+BIN(+)->{-};
+
+AOR;
