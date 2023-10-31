@@ -124,14 +124,13 @@ mapper = sklearn_pandas.DataFrameMapper(
 get_expanded_counts(custmut_csv)
 
 # 1. Print out the columns originally from the custom mutation dataframe
-print(f"\nCustomized Mutant dataframe, Columns: {len(custmut_csv.columns)}, Column Names: {custmut_csv.columns[:5]}")
-
+print(f"\nCustomized Mutant dataframe, Columns: {len(custmut_csv.columns)}")
 
 X, y = mapper.fit_transform(custmut_csv.loc[:, custmut_csv.columns != "pKillsDom"]).astype(np.float32), custmut_csv.loc[:, "pKillsDom"].astype(np.float32)
 X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42)
 
 # 2. Print out the number of columns now in the transformed dataframe
-print(f"\nNum columns in transformed dataframe: {len(X.columns)}\nColumn Sample: {X.columns[:5]}\nRow Sample: {X.iloc[1]}")
+print(f"\nNum columns in transformed dataframe: {len(X.columns)}\n")
 
 # 3. Print out the number of feature_importances_ the random forest regressor has
 clf = RandomForestRegressor(n_estimators=1, max_depth=1, random_state=42)
